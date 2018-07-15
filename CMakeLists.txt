@@ -1,0 +1,10 @@
+cmake_minimum_required (VERSION 2.6)
+project(TestKDTreeGeneric)
+
+set(VTKm_DIR "/home/ubuntu/repos/vtkm-build/lib/cmake/vtkm-1.2")
+
+find_package(VTKm  REQUIRED)
+
+add_executable(test test.cpp)
+
+target_link_libraries(test  vtkm_cont)
