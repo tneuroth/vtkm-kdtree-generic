@@ -32,57 +32,57 @@ template < int N_DIMS >
 class KdTree
 {
 public:
-  KdTree() = default;
+    KdTree() = default;
 
-  /// \brief Construct a  KD-tree for  point positions.
-  ///
-  /// \tparam CoordType type of the x, y, z component of the point coordinates.
-  /// \tparam CoordStorageTag
-  /// \tparam DeviceAdapter
-  /// \param coords An ArrayHandle of x, y, z coordinates of input points.
-  /// \param device Tag for selecting device adapter.
-  ///
-  template <typename CoordType, typename CoordStorageTag, typename DeviceAdapter>
-  void Build(const vtkm::cont::ArrayHandle<vtkm::Vec<CoordType, N_DIMS>, CoordStorageTag>& coords,
+    /// \brief Construct a  KD-tree for  point positions.
+    ///
+    /// \tparam CoordType type of the x, y, z component of the point coordinates.
+    /// \tparam CoordStorageTag
+    /// \tparam DeviceAdapter
+    /// \param coords An ArrayHandle of x, y, z coordinates of input points.
+    /// \param device Tag for selecting device adapter.
+    ///
+    template <typename CoordType, typename CoordStorageTag, typename DeviceAdapter>
+    void Build(const vtkm::cont::ArrayHandle<vtkm::Vec<CoordType, N_DIMS>, CoordStorageTag>& coords,
+               DeviceAdapter device)
+    {
+        vtkm::worklet::spatialstructure::KdTreeConstruction<N_DIMS>().Run(
+            coords, this->PointIds, this->SplitIds, device);
+    }
+
+    /// \brief Nearest neighbor search using KD-Tree
+    ///
+    /// Parallel search of nearest neighbor for each point in the \c queryPoints in the the set of
+    /// \c coords. Returns nearest neighbor in \c nearestNeighborId and distance to nearest neighbor
+    /// in \c distances.
+    ///
+    /// \tparam CoordType
+    /// \tparam CoordStorageTag1
+    /// \tparam CoordStorageTag2
+    /// \tparam DeviceAdapter
+    /// \param coords Point coordinates for training data set (haystack)
+    /// \param queryPoints Point coordinates to query for nearest neighbor (needles).
+    /// \param nearestNeighborIds Nearest neighbor in the traning data set for each points in the
+    ///                           testing set
+    /// \param distances Distances between query points and their nearest neighbors.
+    /// \param device Tag for selecting device adapter.
+    template <typename CoordType,
+              typename CoordStorageTag1,
+              typename CoordStorageTag2,
+              typename DeviceAdapter>
+    void Run(const vtkm::cont::ArrayHandle<vtkm::Vec<CoordType, N_DIMS>, CoordStorageTag1>& coords,
+             const vtkm::cont::ArrayHandle<vtkm::Vec<CoordType, N_DIMS>, CoordStorageTag2>& queryPoints,
+             vtkm::cont::ArrayHandle<vtkm::Id>& nearestNeighborIds,
+             vtkm::cont::ArrayHandle<CoordType>& distances,
              DeviceAdapter device)
-  {
-    vtkm::worklet::spatialstructure::KdTreeConstruction<N_DIMS>().Run(
-      coords, this->PointIds, this->SplitIds, device);
-  }
-
-  /// \brief Nearest neighbor search using KD-Tree
-  ///
-  /// Parallel search of nearest neighbor for each point in the \c queryPoints in the the set of
-  /// \c coords. Returns nearest neighbor in \c nearestNeighborId and distance to nearest neighbor
-  /// in \c distances.
-  ///
-  /// \tparam CoordType
-  /// \tparam CoordStorageTag1
-  /// \tparam CoordStorageTag2
-  /// \tparam DeviceAdapter
-  /// \param coords Point coordinates for training data set (haystack)
-  /// \param queryPoints Point coordinates to query for nearest neighbor (needles).
-  /// \param nearestNeighborIds Nearest neighbor in the traning data set for each points in the
-  ///                           testing set
-  /// \param distances Distances between query points and their nearest neighbors.
-  /// \param device Tag for selecting device adapter.
-  template <typename CoordType,
-            typename CoordStorageTag1,
-            typename CoordStorageTag2,
-            typename DeviceAdapter>
-  void Run(const vtkm::cont::ArrayHandle<vtkm::Vec<CoordType, N_DIMS>, CoordStorageTag1>& coords,
-           const vtkm::cont::ArrayHandle<vtkm::Vec<CoordType, N_DIMS>, CoordStorageTag2>& queryPoints,
-           vtkm::cont::ArrayHandle<vtkm::Id>& nearestNeighborIds,
-           vtkm::cont::ArrayHandle<CoordType>& distances,
-           DeviceAdapter device)
-  {
-    vtkm::worklet::spatialstructure::KdTreeNNSearch<N_DIMS>().Run(
-      coords, this->PointIds, this->SplitIds, queryPoints, nearestNeighborIds, distances, device);
-  }
+    {
+        vtkm::worklet::spatialstructure::KdTreeNNSearch<N_DIMS>().Run(
+            coords, this->PointIds, this->SplitIds, queryPoints, nearestNeighborIds, distances, device);
+    }
 
 private:
-  vtkm::cont::ArrayHandle<vtkm::Id> PointIds;
-  vtkm::cont::ArrayHandle<vtkm::Id> SplitIds;
+    vtkm::cont::ArrayHandle<vtkm::Id> PointIds;
+    vtkm::cont::ArrayHandle<vtkm::Id> SplitIds;
 };
 }
 } // namespace vtkm::worklet
