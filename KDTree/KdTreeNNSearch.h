@@ -245,7 +245,7 @@ public:
         auto intialValue = std::numeric_limits<CoordType>::max();
         vtkm::cont::DeviceAdapterAlgorithm<DeviceAdapter>::Copy(
             vtkm::cont::make_ArrayHandleConstant(intialValue, qc_Handle.GetNumberOfValues()),
-            nnDis_Handle);
+            nnDis_Handle );
 
         // set up stack size for cuda environment
 #ifdef VTKM_CUDA
