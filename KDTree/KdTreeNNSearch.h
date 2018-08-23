@@ -264,8 +264,11 @@ public:
         NearestNeighborSearchWorklet nns3dWorklet;
         vtkm::worklet::DispatcherMapField<NearestNeighborSearchWorklet, DeviceAdapter>
         nnsDispatcher(nns3dWorklet);
+
+        std::cout << "invoking nearestN" << std::endl;
         nnsDispatcher.Invoke(
             qc_Handle, pointId_Handle, splitId_Handle, coordi_Handle, nnId_Handle, nnDis_Handle);
+        std::cout << "nearestN complete" << std::endl;
 
 #ifdef VTKM_CUDA
         if (DeviceAdapterTraits::GetId() == VTKM_DEVICE_ADAPTER_CUDA)
