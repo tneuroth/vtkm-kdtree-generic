@@ -82,9 +82,13 @@ public:
         VTKM_EXEC void operator()(const T& in, T& out) const
         {
             if (in == 0)
+            {
                 out = 1;
+            }
             else
+            {
                 out = 0;
+            }
         }
     };
 

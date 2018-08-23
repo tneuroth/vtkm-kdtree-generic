@@ -64,6 +64,7 @@ public:
         template <typename CooriVecT, typename CooriT, typename IdPortalT, typename CoordiPortalT>
         VTKM_EXEC_CONT void NearestNeighborSearch(const CooriVecT& qc,
                 CooriT& dis,
+                vtkm::Id hopsSoFar,
                 vtkm::Id& nnpIdx,
                 vtkm::Int32 level,
                 vtkm::Id sIdx,
@@ -72,16 +73,34 @@ public:
                 const IdPortalT& splitIdPortal,
                 const CoordiPortalT& coordiPortal) const
         {
+            ++hopsSoFar;
+            if( hopsSoFar > 10000 )
+            {
+                std::cerr << "over 10000 iterations for qc=" << qc[ 0 ] << "," << qc[ 1 ]  << std::endl;
+                exit( 1 );
+            } 
 
             if (tIdx - sIdx == 1)
             {
                 ///// leaf node
+
+                if( sIdx < 0 || sIdx >= treePortal.GetNumberOfValues() )
+                {
+                    std::cerr << "sIdx out of bounds in vtkm::kd" << std::endl;
+                    exit( 1 );
+                }
+
                 vtkm::Id leafNodeIdx = treePortal.Get(sIdx);
 
                 CooriVecT leaf;
 
                 for( int i =0; i < N_DIMS; ++i )
                 {
+                    if( leafNodeIdx < 0 || leafNodeIdx >= coordiPortal.GetNumberOfValues() )
+                    {
+                        std::cerr << "leafNodeIdx out of bounds in vtkm::kd" << std::endl;
+                        exit( 1 );
+                    }
                     leaf[ i ] = coordiPortal.Get(leafNodeIdx)[ i ];
                 }
 
@@ -98,7 +117,26 @@ public:
                 //normal Node
                 vtkm::Id splitNodeLoc = static_cast<vtkm::Id>(vtkm::Ceil(double((sIdx + tIdx)) / 2.0));
 
+                if( splitNodeLoc < 0 || splitNodeLoc >= splitIdPortal.GetNumberOfValues() )
+                {
+                    std::cerr << "splitNodeLoc out of bounds in vtkm::kd" << std::endl;
+                    exit( 1 );
+                }
+
+                if( splitIdPortal.Get(splitNodeLoc) < 0 || splitIdPortal.Get(splitNodeLoc) >= coordiPortal.GetNumberOfValues() )
+                {
+                    std::cerr << "splitIdPortal.Get(splitNodeLoc) out of bounds in vtkm::kd" << std::endl;
+                    exit( 1 );
+                }
+
+                if( level % N_DIMS < 0 || level % N_DIMS >= 2 )
+                {
+                    std::cerr << "level mod N_DIMS out of bounds in vtkm::kd" << std::endl;
+                    exit( 1 );
+                }
+
                 CooriT splitAxis = coordiPortal.Get(splitIdPortal.Get(splitNodeLoc))[ level % N_DIMS ];
+
                 CooriT queryCoordi = qc[ level % N_DIMS ];
                 ///
 
@@ -107,6 +145,7 @@ public:
                     //left tree first
                     if (queryCoordi - dis <= splitAxis)
                         NearestNeighborSearch(  qc,
+                                                hopsSoFar,
                                                 dis,
                                                 nnpIdx,
                                                 level + 1,
@@ -117,6 +156,7 @@ public:
                                                 coordiPortal);
                     if (queryCoordi + dis > splitAxis)
                         NearestNeighborSearch(qc,
+                                              hopsSoFar,                          
                                               dis,
                                               nnpIdx,
                                               level + 1,
@@ -131,6 +171,7 @@ public:
                     //right tree first
                     if (queryCoordi + dis > splitAxis)
                         NearestNeighborSearch(qc,
+                                              hopsSoFar,
                                               dis,
                                               nnpIdx,
                                               level + 1,
@@ -141,6 +182,7 @@ public:
                                               coordiPortal);
                     if (queryCoordi - dis <= splitAxis)
                         NearestNeighborSearch(qc,
+                                              hopsSoFar,
                                               dis,
                                               nnpIdx,
                                               level + 1,
@@ -165,7 +207,9 @@ public:
                                   IdType& nnId,
                                   CoordiType& nnDis) const
         {
+            vtkm::Id hopsSoFar = 0;
             NearestNeighborSearch(qc,
+                                  hopsSoFar,
                                   nnDis,
                                   nnId,
                                   0,
