@@ -167,7 +167,6 @@ public:
         {
             vtkm::Id hopsSoFar = 0;
             NearestNeighborSearch(qc,
-                                  hopsSoFar,
                                   nnDis,
                                   nnId,
                                   0,
