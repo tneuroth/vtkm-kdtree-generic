@@ -1,4 +1,5 @@
 #include <vtkm/worklet/DispatcherMapField.h>
+#include <vtkm/cont/testing/Testing.h>
 #include "KDTree/KdTree.h"
 
 #include <iostream>
@@ -6,22 +7,10 @@
 
 using namespace std;
 
-#define N_DIMS 2
+#define N_DIMS 9
 
 namespace
 {
-
-    template< typename V_TP >
-    static V_TP dist( const vtkm::Vec< V_TP, N_DIMS > & p1, const vtkm::Vec< V_TP, N_DIMS > & p2 )
-    {
-        V_TP sm = 0.0;
-        for( int i = 0; i < N_DIMS; ++i )
-        {
-          V_TP diff = p1[ i ] - p2[ i ]; 
-          sm += diff * diff;
-        }
-        return vtkm::Sqrt(  sm );
-    }
 
 using Algorithm = vtkm::cont::DeviceAdapterAlgorithm<VTKM_DEFAULT_DEVICE_ADAPTER_TAG>;
 
@@ -34,7 +23,7 @@ VTKM_EXEC_CONT vtkm::Id NNSVerify(CoordiVecT qc, CoordiPortalT coordiPortal, Coo
 
   for (vtkm::Int32 i = 0; i < coordiPortal.GetNumberOfValues(); i++)
   {
-    CoordiT _dis = dist( coordiPortal.Get( i ), qc );
+    CoordiT _dis = vtkm::Magnitude( coordiPortal.Get( i ) - qc );
     
     if (_dis < dis)
     {
@@ -71,8 +60,9 @@ public:
 
 void TestKdTreeBuildNNS()
 {
-  vtkm::Int32 nTrainingPoints = 2000000;
-  vtkm::Int32 nTestingPoint   = 280000;
+
+  vtkm::Int32 nTrainingPoints = 200000;
+  vtkm::Int32 nTestingPoint   = 2800;
 
   std::vector<vtkm::Vec< vtkm::Float32, N_DIMS > > coordi;
 
@@ -136,40 +126,41 @@ void TestKdTreeBuildNNS()
               << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
               << " milliseconds\n";
 
-  // vtkm::cont::ArrayHandle<vtkm::Id> bfnnId_Handle;
-  // vtkm::cont::ArrayHandle<vtkm::Float32> bfnnDis_Handle;
-  // NearestNeighborSearchBruteForceWorklet nnsbf3dWorklet;
+  vtkm::cont::ArrayHandle<vtkm::Id> bfnnId_Handle;
+  vtkm::cont::ArrayHandle<vtkm::Float32> bfnnDis_Handle;
+  NearestNeighborSearchBruteForceWorklet nnsbf3dWorklet;
   
-  // vtkm::worklet::DispatcherMapField<NearestNeighborSearchBruteForceWorklet> nnsbfDispatcher(
-  //   nnsbf3dWorklet);
+  vtkm::worklet::DispatcherMapField<NearestNeighborSearchBruteForceWorklet> nnsbfDispatcher(
+    nnsbf3dWorklet);
 
-  //   t1 = std::chrono::high_resolution_clock::now();
-  // nnsbfDispatcher.Invoke(
-  //   qc_Handle, vtkm::cont::make_ArrayHandle(coordi), bfnnId_Handle, bfnnDis_Handle);
-  //   t2 = std::chrono::high_resolution_clock::now();
-  //   std::cout << "brute force took "
-  //             << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
-  //             << " milliseconds\n";
+    t1 = std::chrono::high_resolution_clock::now();
+  nnsbfDispatcher.Invoke(
+    qc_Handle, vtkm::cont::make_ArrayHandle(coordi), bfnnId_Handle, bfnnDis_Handle);
+    t2 = std::chrono::high_resolution_clock::now();
+    std::cout << "brute force took "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
+              << " milliseconds\n";
 
   // ///// verfity search result /////
   bool passTest = true;
-  // for (vtkm::Int32 i = 0; i < nTestingPoint; i++)
-  // {
-  //   vtkm::Id workletIdx   = nnId_Handle.GetPortalControl().Get(i);
-  //   vtkm::Id bfworkletIdx = bfnnId_Handle.GetPortalControl().Get(i);
+  for (vtkm::Int32 i = 0; i < nTestingPoint; i++)
+  {
+    vtkm::Id workletIdx   = nnId_Handle.GetPortalControl().Get(i);
+    vtkm::Id bfworkletIdx = bfnnId_Handle.GetPortalControl().Get(i);
 
-  //   if (workletIdx != bfworkletIdx)
-  //   {
-  //     passTest = false;
-  //   }
-  // }
+    if (workletIdx != bfworkletIdx)
+    {
+        std::cout << workletIdx << "!=" << bfworkletIdx << " at " << i << std::endl;
+        passTest = false;
+    }
+  }
 
   if( passTest )
   {
     std::cout << "Passed Test\n";
   }
 
-    VTKM_TEST_ASSERT(passTest, "Kd tree NN search result incorrect.");
+  VTKM_TEST_ASSERT( passTest, "Kd tree NN search result incorrect.");
 }
 
 } // anonymous namespace
