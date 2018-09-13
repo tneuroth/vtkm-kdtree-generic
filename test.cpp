@@ -7,7 +7,7 @@
 
 using namespace std;
 
-#define N_DIMS 9
+#define N_DIMS 2
 
 namespace
 {
@@ -61,8 +61,8 @@ public:
 void TestKdTreeBuildNNS()
 {
 
-  vtkm::Int32 nTrainingPoints = 200000;
-  vtkm::Int32 nTestingPoint   = 2800;
+  vtkm::Int32 nTrainingPoints =  1000;
+  vtkm::Int32 nTestingPoint   = 1;
 
   std::vector<vtkm::Vec< vtkm::Float32, N_DIMS > > coordi;
 
@@ -126,6 +126,8 @@ void TestKdTreeBuildNNS()
               << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
               << " milliseconds\n";
 
+   return;
+ 
   vtkm::cont::ArrayHandle<vtkm::Id> bfnnId_Handle;
   vtkm::cont::ArrayHandle<vtkm::Float32> bfnnDis_Handle;
   NearestNeighborSearchBruteForceWorklet nnsbf3dWorklet;

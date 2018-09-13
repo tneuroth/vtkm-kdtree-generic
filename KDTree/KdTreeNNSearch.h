@@ -49,7 +49,9 @@ class KdTreeNNSearch
 public:
     class NearestNeighborSearchWorklet : public vtkm::worklet::WorkletMapField
     {
+
     public:
+    
         using ControlSignature = void(FieldIn<> qcIn,
                                       WholeArrayIn<> treeIdIn,
                                       WholeArrayIn<> treeSplitIdIn,
@@ -62,93 +64,190 @@ public:
         NearestNeighborSearchWorklet() {}
 
         template <typename CooriVecT, typename CooriT, typename IdPortalT, typename CoordiPortalT>
-        VTKM_EXEC_CONT void NearestNeighborSearch(const CooriVecT& qc,
-                CooriT& dis,
-                vtkm::Id& nnpIdx,
-                vtkm::Int32 level,
-                vtkm::Id sIdx,
-                vtkm::Id tIdx,
-                const IdPortalT& treePortal,
-                const IdPortalT& splitIdPortal,
-                const CoordiPortalT& coordiPortal) const
+        VTKM_EXEC_CONT void NearestNeighborSearchIterative(
+            const CooriVecT & qc,
+            CooriT & dis,
+            vtkm::Id & nnpIdx,
+            vtkm::Int32 N,
+            const IdPortalT & treePortal,
+            const IdPortalT & splitIdPortal,
+            const CoordiPortalT & coordiPortal ) const
         {
-            if (tIdx - sIdx == 1)
+            const vtkm::Int32 MAX_STACK_SIZE = 30000;
+            vtkm::Int32 stack[ MAX_STACK_SIZE ];
+
+            stack[ 0 ] = 0;
+            stack[ 1 ] = N;
+            stack[ 2 ] = 0;
+      
+            vtkm::Int32 stackSize = 1;
+
+            while( stackSize > 0 )
+            {   
+                vtkm::Int32 left  = stack[ ( stackSize - 1 )*3     ];
+                vtkm::Int32 right = stack[ ( stackSize - 1 )*3 + 1 ];
+                vtkm::Int32 level = stack[ ( stackSize - 1 )*3 + 2 ];
+
+                --stackSize;
+
+                std::cout << left <<  " " << right << " " << level << std::endl;  
+
+                if ( right - left == 1 )
+                {
+                    ///// leaf node
+                    const vtkm::Id & leafNodeIdx = treePortal.Get( left );
+                    const CooriT _dis = vtkm::Magnitude( coordiPortal.Get( leafNodeIdx ) - qc );
+                    
+                    if ( _dis < dis )
+                    {
+                        dis = _dis;
+                        nnpIdx = leafNodeIdx;
+                    }
+                    std::cout << "leaf" << std::endl;                   
+                }
+                else
+                {
+                    //normal Node
+                    const vtkm::Int32 DIM_INDEX = level % N_DIMS;
+                    vtkm::Int32 splitNodeLoc = static_cast< vtkm::Int32 >( vtkm::Ceil( double( ( left + right ) ) / 2.0 ) );
+                    CooriT splitAxis = coordiPortal.Get( splitIdPortal.Get( splitNodeLoc ) )[ DIM_INDEX ];
+                    CooriT queryCoordi = qc[ DIM_INDEX ];
+
+                    if ( queryCoordi <= splitAxis )
+                    { 
+                        if ( queryCoordi + dis > splitAxis )
+                        {
+                            ++stackSize;                           
+                            stack[ ( stackSize - 1 )*3     ] = splitNodeLoc;
+                            stack[ ( stackSize - 1 )*3 + 1 ] = right;
+                            stack[ ( stackSize - 1 )*3 + 2 ] = level + 1;   
+                        }
+
+                        // left tree first
+                        if ( queryCoordi - dis <= splitAxis )
+                        {
+                            ++stackSize;
+                            stack[ ( stackSize - 1 )*3     ] = left;
+                            stack[ ( stackSize - 1 )*3 + 1 ] = splitNodeLoc;
+                            stack[ ( stackSize - 1 )*3 + 2 ] = level + 1;                            
+                        }   
+                    }
+                    else
+                    {
+                        if ( queryCoordi - dis <= splitAxis )
+                        {
+                            ++stackSize;
+                            stack[ ( stackSize - 1 )*3     ] = left;
+                            stack[ ( stackSize - 1 )*3 + 1 ] = splitNodeLoc;
+                            stack[ ( stackSize - 1 )*3 + 2 ] = level + 1;   
+                        }
+
+                        // right tree first
+                        if ( queryCoordi + dis > splitAxis )
+                        {
+                            ++stackSize;
+                            stack[ ( stackSize - 1 )*3     ] = splitNodeLoc;
+                            stack[ ( stackSize - 1 )*3 + 1 ] = right;
+                            stack[ ( stackSize - 1 )*3 + 2 ] = level + 1;  
+                        }       
+                    }
+                }
+            }
+        }
+
+        template <typename CooriVecT, typename CooriT, typename IdPortalT, typename CoordiPortalT>
+        VTKM_EXEC_CONT void NearestNeighborSearch(
+            const CooriVecT & qc,
+            CooriT & dis,
+            vtkm::Id & nnpIdx,
+            vtkm::Int32 level,
+            vtkm::Int32 left,
+            vtkm::Int32 right,
+            const IdPortalT     & treePortal,
+            const IdPortalT     & splitIdPortal,
+            const CoordiPortalT & coordiPortal ) const
+        {
+            std::cout << left <<  " " << right << " " << level << std::endl;  
+
+            if ( right - left == 1 )
             {
                 ///// leaf node
-
-                vtkm::Id leafNodeIdx = treePortal.Get(sIdx);
-
-                CooriVecT leaf;
-
-                for( int i =0; i < N_DIMS; ++i )
-                {
-                    leaf[ i ] = coordiPortal.Get(leafNodeIdx)[ i ];
-                }
-
-                CooriT _dis = vtkm::Magnitude( leaf - qc );
-
-                if (_dis < dis)
+                const vtkm::Id & leafNodeIdx = treePortal.Get( left );
+                const CooriT _dis = vtkm::Magnitude( coordiPortal.Get( leafNodeIdx ) - qc );
+                if ( _dis < dis )
                 {
                     dis = _dis;
                     nnpIdx = leafNodeIdx;
                 }
+                std::cout << "leaf" << std::endl;
             }
             else
             {
                 //normal Node
-                vtkm::Id splitNodeLoc = static_cast<vtkm::Id>(vtkm::Ceil(double((sIdx + tIdx)) / 2.0));
-                CooriT splitAxis = coordiPortal.Get(splitIdPortal.Get(splitNodeLoc))[ level % N_DIMS ];
+                const vtkm::Int32 DIM_INDEX = level % N_DIMS;
+                vtkm::Int32 splitNodeLoc = static_cast< vtkm::Int32 >( vtkm::Ceil( double( ( left + right ) ) / 2.0 ) );
+                CooriT splitAxis = coordiPortal.Get( splitIdPortal.Get( splitNodeLoc ) )[ DIM_INDEX ];
+                CooriT queryCoordi = qc[ DIM_INDEX ];
 
-                CooriT queryCoordi = qc[ level % N_DIMS ];
-                ///
-
-                if (queryCoordi <= splitAxis)
-                {
+                if ( queryCoordi <= splitAxis )
+                { 
                     //left tree first
-                    if (queryCoordi - dis <= splitAxis)
-                        NearestNeighborSearch(  qc,
-                                                dis,
-                                                nnpIdx,
-                                                level + 1,
-                                                sIdx,
-                                                splitNodeLoc,
-                                                treePortal,
-                                                splitIdPortal,
-                                                coordiPortal);
-                    if (queryCoordi + dis > splitAxis)
-                        NearestNeighborSearch(qc,                        
-                                              dis,
-                                              nnpIdx,
-                                              level + 1,
-                                              splitNodeLoc,
-                                              tIdx,
-                                              treePortal,
-                                              splitIdPortal,
-                                              coordiPortal);
+                    if ( queryCoordi - dis <= splitAxis )
+                    {
+                        NearestNeighborSearch(
+                            qc,
+                            dis,
+                            nnpIdx,
+                            level + 1,
+                            left,
+                            splitNodeLoc,
+                            treePortal,
+                            splitIdPortal,
+                            coordiPortal );
+                    }
+                    if ( queryCoordi + dis > splitAxis )
+                    {
+                        NearestNeighborSearch(
+                            qc,                        
+                            dis,
+                            nnpIdx,
+                            level + 1,
+                            splitNodeLoc,
+                            right,
+                            treePortal,
+                            splitIdPortal,
+                            coordiPortal);
+                    }
                 }
                 else
                 {
                     //right tree first
-                    if (queryCoordi + dis > splitAxis)
-                        NearestNeighborSearch(qc,
-                                              dis,
-                                              nnpIdx,
-                                              level + 1,
-                                              splitNodeLoc,
-                                              tIdx,
-                                              treePortal,
-                                              splitIdPortal,
-                                              coordiPortal);
-                    if (queryCoordi - dis <= splitAxis)
-                        NearestNeighborSearch(qc,
-                                              dis,
-                                              nnpIdx,
-                                              level + 1,
-                                              sIdx,
-                                              splitNodeLoc,
-                                              treePortal,
-                                              splitIdPortal,
-                                              coordiPortal);
+                    if ( queryCoordi + dis > splitAxis )
+                    {
+                        NearestNeighborSearch(
+                            qc,
+                            dis,
+                            nnpIdx,
+                            level + 1,
+                            splitNodeLoc,
+                            right,
+                            treePortal,
+                            splitIdPortal,
+                            coordiPortal);
+                    }
+                    if ( queryCoordi - dis <= splitAxis )
+                    {
+                        NearestNeighborSearch(
+                            qc,
+                            dis,
+                            nnpIdx,
+                            level + 1,
+                            left,
+                            splitNodeLoc,
+                            treePortal,
+                            splitIdPortal,
+                            coordiPortal);
+                    }
                 }
             }
         }
@@ -165,16 +264,25 @@ public:
                                   IdType& nnId,
                                   CoordiType& nnDis) const
         {
-            vtkm::Id hopsSoFar = 0;
-            NearestNeighborSearch(qc,
-                                  nnDis,
-                                  nnId,
-                                  0,
-                                  0,
-                                  treeIdPortal.GetNumberOfValues(),
-                                  treeIdPortal,
-                                  treeSplitIdPortal,
-                                  treeCoordiPortal);
+            // NearestNeighborSearch(
+            //     qc,
+            //     nnDis,
+            //     nnId,
+            //     0,
+            //     0,
+            //     treeIdPortal.GetNumberOfValues(),
+            //     treeIdPortal,
+            //     treeSplitIdPortal,
+            //     treeCoordiPortal);
+
+            NearestNeighborSearchIterative(
+                qc,
+                nnDis,
+                nnId,
+                treeIdPortal.GetNumberOfValues(),
+                treeIdPortal,
+                treeSplitIdPortal,
+                treeCoordiPortal);   
         }
     };
 
