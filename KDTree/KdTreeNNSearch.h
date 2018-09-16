@@ -63,7 +63,6 @@ public:
         VTKM_CONT
         NearestNeighborSearchWorklet() {}
 
-
         template <typename CooriVecT, typename CooriT, typename IdPortalT, typename CoordiPortalT>
         VTKM_EXEC_CONT void NearestNeighborSearchIterative(
             const CooriVecT & qc,
@@ -74,8 +73,8 @@ public:
             const IdPortalT & splitIdPortal,
             const CoordiPortalT & coordiPortal ) const
         {
-            const vtkm::Int32 MAX_STACK_SIZE = 30000;
-            
+            const vtkm::Int32 MAX_STACK_SIZE = 200;
+
             vtkm::Int32 stacki[ MAX_STACK_SIZE ];
             CooriT      stackf[ MAX_STACK_SIZE ];
             vtkm::UInt8 stackc[ MAX_STACK_SIZE ];
@@ -87,25 +86,19 @@ public:
             stackc[ 1 ] = 0;
 
             stackf[ 0 ] = 0;
-            stackf[ 1 ] = 0;
 
             vtkm::Int32 stackSize = 1;
 
             while( stackSize > 0 )
-            {   
+            {  
                 vtkm::Int32 left  = stacki[ ( stackSize - 1 )*2     ];
                 vtkm::Int32 right = stacki[ ( stackSize - 1 )*2 + 1 ];
-                
-                vtkm::UInt8 dim = stackc[ ( stackSize - 1 )*2     ];                
-                vtkm::UInt8 cond = stackc[ ( stackSize -  1 )*2 + 1 ];
+                vtkm::UInt8 dim   = stackc[ ( stackSize - 1 ) ];                
+                CooriT cval       = stackf[ ( stackSize - 1 ) ];
 
-                CooriT qcrdi = stackf[ ( stackSize - 1 )*2     ];
-                CooriT splta = stackf[ ( stackSize - 1 )*2 + 1 ];
-                                                
                 --stackSize;
 
-                if( ( qcrdi - dis  > splta && cond == 0 )
-                 || ( qcrdi + dis <= splta && cond == 1 ) )
+                if( cval > dis )
                 {
                     continue;
                 }
@@ -124,70 +117,64 @@ public:
                 }
                 else
                 {
+                    // ran out of stack space
+                    if( stackSize >= MAX_STACK_SIZE - 1 )
+                    {
+                        nnpIdx = -1;
+                        break;
+                    }
+
                     //normal Node
                     // const vtkm::Int32 DIM_INDEX = dim % N_DIMS;
                     vtkm::Int32 splitNodeLoc = static_cast< vtkm::Int32 >( vtkm::Ceil( double( ( left + right ) ) / 2.0 ) );
                     CooriT splitAxis = coordiPortal.Get( splitIdPortal.Get( splitNodeLoc ) )[ dim ];
                     CooriT queryCoordi = qc[ dim ];
                    
-                   const vtkm::UInt8 nextDim = ( dim + 1 ) % N_DIMS;
+                    const vtkm::UInt8 nextDim = ( dim + 1 ) % N_DIMS;
 
-                    if ( queryCoordi <= splitAxis )
+                    const vtkm::Float32 cv1 = queryCoordi - splitAxis;
+                    const vtkm::Float32 cv2 = -cv1;
+
+                    if ( cv1 <= 0 )
                     { 
-                        if ( queryCoordi + dis > splitAxis )
+                        if ( cv2 < dis )
                         {
                             ++stackSize;                           
                             stacki[ ( stackSize - 1 )*2     ] = splitNodeLoc;
                             stacki[ ( stackSize - 1 )*2 + 1 ] = right;
-
-                            stackc[ ( stackSize - 1 )*2     ] = nextDim;  
-                            stackc[ ( stackSize - 1 )*2 + 1 ] = 1;  
-                            
-                            stackf[ ( stackSize - 1 )*2     ] = queryCoordi;  
-                            stackf[ ( stackSize - 1 )*2 + 1 ] = splitAxis;            
+                            stackc[ ( stackSize - 1 ) ] = nextDim; 
+                            stackf[ ( stackSize - 1 ) ] = cv2;          
                         }
 
                         // left tree first
-                        if ( queryCoordi - dis <= splitAxis )
+                        if ( cv1 < dis )
                         {
                             ++stackSize;
                             stacki[ ( stackSize - 1 )*2     ] = left;
                             stacki[ ( stackSize - 1 )*2 + 1 ] = splitNodeLoc;
-
-                            stackc[ ( stackSize - 1 )*2     ] = nextDim;                               
-                            stackc[ ( stackSize - 1 )*2 + 1 ] = 0;   
-
-                            stackf[ ( stackSize - 1 )*2     ] = queryCoordi;  
-                            stackf[ ( stackSize - 1 )*2 + 1 ] = splitAxis;                                                                             
+                            stackc[ ( stackSize - 1 ) ] = nextDim;                               
+                            stackf[ ( stackSize - 1 ) ] = cv1;                                                                               
                         }   
                     }
                     else
                     {
-                        if ( queryCoordi - dis <= splitAxis )
+                        if ( cv1 < dis )
                         {
                             ++stackSize;
                             stacki[ ( stackSize - 1 )*2     ] = left;
                             stacki[ ( stackSize - 1 )*2 + 1 ] = splitNodeLoc;
-
-                            stackc[ ( stackSize - 1 )*2     ] = nextDim;                               
-                            stackc[ ( stackSize - 1 )*2 + 1 ] = 0;   
-
-                            stackf[ ( stackSize - 1 )*2     ] = queryCoordi;  
-                            stackf[ ( stackSize - 1 )*2 + 1 ] = splitAxis;                                  
+                            stackc[ ( stackSize - 1 ) ] = nextDim;   
+                            stackf[ ( stackSize - 1 ) ] = cv1;                                  
                         }
 
                         // right tree first
-                        if ( queryCoordi + dis > splitAxis )
+                        if ( cv2 < dis )
                         {
                             ++stackSize;                           
                             stacki[ ( stackSize - 1 )*2     ] = splitNodeLoc;
                             stacki[ ( stackSize - 1 )*2 + 1 ] = right;
-
-                            stackc[ ( stackSize - 1 )*2     ] = nextDim;  
-                            stackc[ ( stackSize - 1 )*2 + 1 ] = 1;  
-                            
-                            stackf[ ( stackSize - 1 )*2     ] = queryCoordi;  
-                            stackf[ ( stackSize - 1 )*2 + 1 ] = splitAxis;                                      
+                            stackc[ ( stackSize - 1 ) ] = nextDim; 
+                            stackf[ ( stackSize - 1 ) ] = cv2;                                       
                         }       
                     }
                 }
@@ -225,10 +212,13 @@ public:
                 CooriT splitAxis = coordiPortal.Get( splitIdPortal.Get( splitNodeLoc ) )[ DIM_INDEX ];
                 CooriT queryCoordi = qc[ DIM_INDEX ];
 
+                const vtkm::Float32 c1 = queryCoordi - dis - splitAxis;
+                const vtkm::Float32 c2 = queryCoordi + dis - splitAxis;
+
                 if ( queryCoordi <= splitAxis )
                 { 
                     //left tree first
-                    if ( queryCoordi - dis <= splitAxis )
+                    if ( c1 <= 0 )
                     {
                         NearestNeighborSearch(
                             qc,
@@ -241,7 +231,7 @@ public:
                             splitIdPortal,
                             coordiPortal );
                     }
-                    if ( queryCoordi + dis > splitAxis )
+                    if ( c2 > 0 )
                     {
                         NearestNeighborSearch(
                             qc,                        
@@ -258,7 +248,7 @@ public:
                 else
                 {
                     //right tree first
-                    if ( queryCoordi + dis > splitAxis )
+                    if ( c2 > 0 )
                     {
                         NearestNeighborSearch(
                             qc,
@@ -271,7 +261,7 @@ public:
                             splitIdPortal,
                             coordiPortal);
                     }
-                    if ( queryCoordi - dis <= splitAxis )
+                    if ( c1 <= 0 )
                     {
                         NearestNeighborSearch(
                             qc,
