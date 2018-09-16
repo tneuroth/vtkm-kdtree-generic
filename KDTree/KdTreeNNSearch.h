@@ -75,16 +75,16 @@ public:
             const CoordiPortalT & coordiPortal ) const
         {
             const vtkm::Int32 MAX_STACK_SIZE = 30000;
-
-            vtkm::Int32  stacki[ MAX_STACK_SIZE ];
-            CooriT stackf[ MAX_STACK_SIZE ];
+            
+            vtkm::Int32 stacki[ MAX_STACK_SIZE ];
+            CooriT      stackf[ MAX_STACK_SIZE ];
             vtkm::UInt8 stackc[ MAX_STACK_SIZE ];
 
             stacki[ 0 ] = 0;
             stacki[ 1 ] = N;
-            stacki[ 2 ] = 0;
 
             stackc[ 0 ] = 0;
+            stackc[ 1 ] = 0;
 
             stackf[ 0 ] = 0;
             stackf[ 1 ] = 0;
@@ -93,11 +93,11 @@ public:
 
             while( stackSize > 0 )
             {   
-                vtkm::Int32 left  = stacki[ ( stackSize - 1 )*3     ];
-                vtkm::Int32 right = stacki[ ( stackSize - 1 )*3 + 1 ];
-                vtkm::Int32 level = stacki[ ( stackSize - 1 )*3 + 2 ];
+                vtkm::Int32 left  = stacki[ ( stackSize - 1 )*2     ];
+                vtkm::Int32 right = stacki[ ( stackSize - 1 )*2 + 1 ];
                 
-                vtkm::UInt8 cond = stackc[ ( stackSize - 1 ) ];
+                vtkm::UInt8 dim = stackc[ ( stackSize - 1 )*2     ];                
+                vtkm::UInt8 cond = stackc[ ( stackSize -  1 )*2 + 1 ];
 
                 CooriT qcrdi = stackf[ ( stackSize - 1 )*2     ];
                 CooriT splta = stackf[ ( stackSize - 1 )*2 + 1 ];
@@ -125,21 +125,23 @@ public:
                 else
                 {
                     //normal Node
-                    const vtkm::Int32 DIM_INDEX = level % N_DIMS;
+                    // const vtkm::Int32 DIM_INDEX = dim % N_DIMS;
                     vtkm::Int32 splitNodeLoc = static_cast< vtkm::Int32 >( vtkm::Ceil( double( ( left + right ) ) / 2.0 ) );
-                    CooriT splitAxis = coordiPortal.Get( splitIdPortal.Get( splitNodeLoc ) )[ DIM_INDEX ];
-                    CooriT queryCoordi = qc[ DIM_INDEX ];
+                    CooriT splitAxis = coordiPortal.Get( splitIdPortal.Get( splitNodeLoc ) )[ dim ];
+                    CooriT queryCoordi = qc[ dim ];
+                   
+                   const vtkm::UInt8 nextDim = ( dim + 1 ) % N_DIMS;
 
                     if ( queryCoordi <= splitAxis )
                     { 
                         if ( queryCoordi + dis > splitAxis )
                         {
                             ++stackSize;                           
-                            stacki[ ( stackSize - 1 )*3     ] = splitNodeLoc;
-                            stacki[ ( stackSize - 1 )*3 + 1 ] = right;
-                            stacki[ ( stackSize - 1 )*3 + 2 ] = level + 1;  
-                            
-                            stackc[ ( stackSize - 1 ) ] = 1;  
+                            stacki[ ( stackSize - 1 )*2     ] = splitNodeLoc;
+                            stacki[ ( stackSize - 1 )*2 + 1 ] = right;
+
+                            stackc[ ( stackSize - 1 )*2     ] = nextDim;  
+                            stackc[ ( stackSize - 1 )*2 + 1 ] = 1;  
                             
                             stackf[ ( stackSize - 1 )*2     ] = queryCoordi;  
                             stackf[ ( stackSize - 1 )*2 + 1 ] = splitAxis;            
@@ -149,14 +151,14 @@ public:
                         if ( queryCoordi - dis <= splitAxis )
                         {
                             ++stackSize;
-                            stacki[ ( stackSize - 1 )*3     ] = left;
-                            stacki[ ( stackSize - 1 )*3 + 1 ] = splitNodeLoc;
-                            stacki[ ( stackSize - 1 )*3 + 2 ] = level + 1;   
+                            stacki[ ( stackSize - 1 )*2     ] = left;
+                            stacki[ ( stackSize - 1 )*2 + 1 ] = splitNodeLoc;
 
-                            stackc[ ( stackSize - 1 ) ] = 0; 
+                            stackc[ ( stackSize - 1 )*2     ] = nextDim;                               
+                            stackc[ ( stackSize - 1 )*2 + 1 ] = 0;   
 
                             stackf[ ( stackSize - 1 )*2     ] = queryCoordi;  
-                            stackf[ ( stackSize - 1 )*2 + 1 ] = splitAxis;                                                                              
+                            stackf[ ( stackSize - 1 )*2 + 1 ] = splitAxis;                                                                             
                         }   
                     }
                     else
@@ -164,11 +166,11 @@ public:
                         if ( queryCoordi - dis <= splitAxis )
                         {
                             ++stackSize;
-                            stacki[ ( stackSize - 1 )*3     ] = left;
-                            stacki[ ( stackSize - 1 )*3 + 1 ] = splitNodeLoc;
-                            stacki[ ( stackSize - 1 )*3 + 2 ] = level + 1;   
-                            
-                            stackc[ ( stackSize - 1 ) ] = 0;   
+                            stacki[ ( stackSize - 1 )*2     ] = left;
+                            stacki[ ( stackSize - 1 )*2 + 1 ] = splitNodeLoc;
+
+                            stackc[ ( stackSize - 1 )*2     ] = nextDim;                               
+                            stackc[ ( stackSize - 1 )*2 + 1 ] = 0;   
 
                             stackf[ ( stackSize - 1 )*2     ] = queryCoordi;  
                             stackf[ ( stackSize - 1 )*2 + 1 ] = splitAxis;                                  
@@ -178,14 +180,14 @@ public:
                         if ( queryCoordi + dis > splitAxis )
                         {
                             ++stackSize;                           
-                            stacki[ ( stackSize - 1 )*3     ] = splitNodeLoc;
-                            stacki[ ( stackSize - 1 )*3 + 1 ] = right;
-                            stacki[ ( stackSize - 1 )*3 + 2 ] = level + 1;  
+                            stacki[ ( stackSize - 1 )*2     ] = splitNodeLoc;
+                            stacki[ ( stackSize - 1 )*2 + 1 ] = right;
 
-                            stackc[ ( stackSize - 1 ) ] = 1; 
+                            stackc[ ( stackSize - 1 )*2     ] = nextDim;  
+                            stackc[ ( stackSize - 1 )*2 + 1 ] = 1;  
                             
                             stackf[ ( stackSize - 1 )*2     ] = queryCoordi;  
-                            stackf[ ( stackSize - 1 )*2 + 1 ] = splitAxis;                            
+                            stackf[ ( stackSize - 1 )*2 + 1 ] = splitAxis;                                      
                         }       
                     }
                 }
