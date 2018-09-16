@@ -63,6 +63,7 @@ public:
         VTKM_CONT
         NearestNeighborSearchWorklet() {}
 
+
         template <typename CooriVecT, typename CooriT, typename IdPortalT, typename CoordiPortalT>
         VTKM_EXEC_CONT void NearestNeighborSearchIterative(
             const CooriVecT & qc,
@@ -74,23 +75,40 @@ public:
             const CoordiPortalT & coordiPortal ) const
         {
             const vtkm::Int32 MAX_STACK_SIZE = 30000;
-            vtkm::Int32 stack[ MAX_STACK_SIZE ];
 
-            stack[ 0 ] = 0;
-            stack[ 1 ] = N;
-            stack[ 2 ] = 0;
-      
+            vtkm::Int32  stacki[ MAX_STACK_SIZE ];
+            CooriT stackf[ MAX_STACK_SIZE ];
+            vtkm::UInt8 stackc[ MAX_STACK_SIZE ];
+
+            stacki[ 0 ] = 0;
+            stacki[ 1 ] = N;
+            stacki[ 2 ] = 0;
+
+            stackc[ 0 ] = 0;
+
+            stackf[ 0 ] = 0;
+            stackf[ 1 ] = 0;
+
             vtkm::Int32 stackSize = 1;
 
             while( stackSize > 0 )
             {   
-                vtkm::Int32 left  = stack[ ( stackSize - 1 )*3     ];
-                vtkm::Int32 right = stack[ ( stackSize - 1 )*3 + 1 ];
-                vtkm::Int32 level = stack[ ( stackSize - 1 )*3 + 2 ];
+                vtkm::Int32 left  = stacki[ ( stackSize - 1 )*3     ];
+                vtkm::Int32 right = stacki[ ( stackSize - 1 )*3 + 1 ];
+                vtkm::Int32 level = stacki[ ( stackSize - 1 )*3 + 2 ];
+                
+                vtkm::UInt8 cond = stackc[ ( stackSize - 1 ) ];
 
+                CooriT qcrdi = stackf[ ( stackSize - 1 )*2     ];
+                CooriT splta = stackf[ ( stackSize - 1 )*2 + 1 ];
+                                                
                 --stackSize;
 
-                std::cout << left <<  " " << right << " " << level << std::endl;  
+                if( ( qcrdi - dis  > splta && cond == 0 )
+                 || ( qcrdi + dis <= splta && cond == 1 ) )
+                {
+                    continue;
+                }
 
                 if ( right - left == 1 )
                 {
@@ -102,8 +120,7 @@ public:
                     {
                         dis = _dis;
                         nnpIdx = leafNodeIdx;
-                    }
-                    std::cout << "leaf" << std::endl;                   
+                    }                   
                 }
                 else
                 {
@@ -118,18 +135,28 @@ public:
                         if ( queryCoordi + dis > splitAxis )
                         {
                             ++stackSize;                           
-                            stack[ ( stackSize - 1 )*3     ] = splitNodeLoc;
-                            stack[ ( stackSize - 1 )*3 + 1 ] = right;
-                            stack[ ( stackSize - 1 )*3 + 2 ] = level + 1;   
+                            stacki[ ( stackSize - 1 )*3     ] = splitNodeLoc;
+                            stacki[ ( stackSize - 1 )*3 + 1 ] = right;
+                            stacki[ ( stackSize - 1 )*3 + 2 ] = level + 1;  
+                            
+                            stackc[ ( stackSize - 1 ) ] = 1;  
+                            
+                            stackf[ ( stackSize - 1 )*2     ] = queryCoordi;  
+                            stackf[ ( stackSize - 1 )*2 + 1 ] = splitAxis;            
                         }
 
                         // left tree first
                         if ( queryCoordi - dis <= splitAxis )
                         {
                             ++stackSize;
-                            stack[ ( stackSize - 1 )*3     ] = left;
-                            stack[ ( stackSize - 1 )*3 + 1 ] = splitNodeLoc;
-                            stack[ ( stackSize - 1 )*3 + 2 ] = level + 1;                            
+                            stacki[ ( stackSize - 1 )*3     ] = left;
+                            stacki[ ( stackSize - 1 )*3 + 1 ] = splitNodeLoc;
+                            stacki[ ( stackSize - 1 )*3 + 2 ] = level + 1;   
+
+                            stackc[ ( stackSize - 1 ) ] = 0; 
+
+                            stackf[ ( stackSize - 1 )*2     ] = queryCoordi;  
+                            stackf[ ( stackSize - 1 )*2 + 1 ] = splitAxis;                                                                              
                         }   
                     }
                     else
@@ -137,18 +164,28 @@ public:
                         if ( queryCoordi - dis <= splitAxis )
                         {
                             ++stackSize;
-                            stack[ ( stackSize - 1 )*3     ] = left;
-                            stack[ ( stackSize - 1 )*3 + 1 ] = splitNodeLoc;
-                            stack[ ( stackSize - 1 )*3 + 2 ] = level + 1;   
+                            stacki[ ( stackSize - 1 )*3     ] = left;
+                            stacki[ ( stackSize - 1 )*3 + 1 ] = splitNodeLoc;
+                            stacki[ ( stackSize - 1 )*3 + 2 ] = level + 1;   
+                            
+                            stackc[ ( stackSize - 1 ) ] = 0;   
+
+                            stackf[ ( stackSize - 1 )*2     ] = queryCoordi;  
+                            stackf[ ( stackSize - 1 )*2 + 1 ] = splitAxis;                                  
                         }
 
                         // right tree first
                         if ( queryCoordi + dis > splitAxis )
                         {
-                            ++stackSize;
-                            stack[ ( stackSize - 1 )*3     ] = splitNodeLoc;
-                            stack[ ( stackSize - 1 )*3 + 1 ] = right;
-                            stack[ ( stackSize - 1 )*3 + 2 ] = level + 1;  
+                            ++stackSize;                           
+                            stacki[ ( stackSize - 1 )*3     ] = splitNodeLoc;
+                            stacki[ ( stackSize - 1 )*3 + 1 ] = right;
+                            stacki[ ( stackSize - 1 )*3 + 2 ] = level + 1;  
+
+                            stackc[ ( stackSize - 1 ) ] = 1; 
+                            
+                            stackf[ ( stackSize - 1 )*2     ] = queryCoordi;  
+                            stackf[ ( stackSize - 1 )*2 + 1 ] = splitAxis;                            
                         }       
                     }
                 }
@@ -167,8 +204,6 @@ public:
             const IdPortalT     & splitIdPortal,
             const CoordiPortalT & coordiPortal ) const
         {
-            std::cout << left <<  " " << right << " " << level << std::endl;  
-
             if ( right - left == 1 )
             {
                 ///// leaf node
@@ -178,8 +213,7 @@ public:
                 {
                     dis = _dis;
                     nnpIdx = leafNodeIdx;
-                }
-                std::cout << "leaf" << std::endl;
+                }    
             }
             else
             {

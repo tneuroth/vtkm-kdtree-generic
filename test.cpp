@@ -61,14 +61,14 @@ public:
 void TestKdTreeBuildNNS()
 {
 
-  vtkm::Int32 nTrainingPoints =  1000;
-  vtkm::Int32 nTestingPoint   = 1;
+  vtkm::Int32 nTrainingPoints =  3000000;
+  vtkm::Int32 nTestingPoint   = 3000;
 
   std::vector<vtkm::Vec< vtkm::Float32, N_DIMS > > coordi;
 
   ///// randomly generate training points/////
   std::default_random_engine dre;
-  std::uniform_real_distribution<vtkm::Float32> dr(0.0f, 10.0f);
+  std::uniform_real_distribution<vtkm::Float32> dr(0.0f, 100.0f);
 
   for (vtkm::Int32 i = 0; i < nTrainingPoints; i++)
   {
@@ -111,9 +111,10 @@ void TestKdTreeBuildNNS()
 
   ///// preprare testing data /////
   auto qc_Handle = vtkm::cont::make_ArrayHandle(qcVec);
+  std::vector< vtkm::Float32 > distances( qcVec.size(), std::numeric_limits< float >::max() );
 
   vtkm::cont::ArrayHandle<vtkm::Id> nnId_Handle;
-  vtkm::cont::ArrayHandle<vtkm::Float32> nnDis_Handle;
+  auto nnDis_Handle = vtkm::cont::make_ArrayHandle( distances );
 
   std::cout << "building complete\n";
 
@@ -125,8 +126,6 @@ void TestKdTreeBuildNNS()
     std::cout << "searching took "
               << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
               << " milliseconds\n";
-
-   return;
  
   vtkm::cont::ArrayHandle<vtkm::Id> bfnnId_Handle;
   vtkm::cont::ArrayHandle<vtkm::Float32> bfnnDis_Handle;
@@ -169,6 +168,5 @@ void TestKdTreeBuildNNS()
 
 int main(int argc, char* argv[])
 {
-  int res = vtkm::cont::testing::Testing::Run( TestKdTreeBuildNNS );
-  std::cout << res << "\n";
+    vtkm::cont::testing::Testing::Run( TestKdTreeBuildNNS );
 }
