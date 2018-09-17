@@ -264,7 +264,7 @@ public:
     {
         vtkm::cont::ArrayHandle<T> InverseHandle;
         InverseArray invWorklet;
-        vtkm::worklet::DispatcherMapField<InverseArray, DeviceAdapter> InverseArrayDispatcher(
+        vtkm::worklet::DispatcherMapField<InverseArray > InverseArrayDispatcher(
             invWorklet);
         InverseArrayDispatcher.Invoke(inputHandle, InverseHandle);
         return InverseHandle;
@@ -278,7 +278,7 @@ public:
         vtkm::cont::ArrayHandle<T> outputHandle;
         outputHandle.Allocate(inputHandle.GetNumberOfValues());
         ScatterArray scatterWorklet;
-        vtkm::worklet::DispatcherMapField<ScatterArray, DeviceAdapter> ScatterArrayDispatcher(
+        vtkm::worklet::DispatcherMapField<ScatterArray > ScatterArrayDispatcher(
             scatterWorklet);
         ScatterArrayDispatcher.Invoke(inputHandle, indexHandle, outputHandle);
         return outputHandle;
@@ -291,7 +291,7 @@ public:
     {
         vtkm::cont::ArrayHandle<T> newSegIdHandle;
         NewSegmentId newsegidWorklet;
-        vtkm::worklet::DispatcherMapField<NewSegmentId, DeviceAdapter> newSegIdDispatcher(
+        vtkm::worklet::DispatcherMapField<NewSegmentId > newSegIdDispatcher(
             newsegidWorklet);
         newSegIdDispatcher.Invoke(oldSegIdHandle, flagHandle, newSegIdHandle);
         return newSegIdHandle;
@@ -306,7 +306,7 @@ public:
     {
         vtkm::cont::ArrayHandle<T> splitIdInSegmentHandle;
         FindSplitPointId findSplitPointIdWorklet;
-        vtkm::worklet::DispatcherMapField<FindSplitPointId, DeviceAdapter>
+        vtkm::worklet::DispatcherMapField<FindSplitPointId >
         findSplitPointIdWorkletDispatcher(findSplitPointIdWorklet);
         findSplitPointIdWorkletDispatcher.Invoke(pointIdHandle, rankHandle, splitIdInSegmentHandle);
 
@@ -315,8 +315,9 @@ public:
 
         vtkm::cont::ArrayHandle<T> splitIdHandle;
         SaveSplitPointId saveSplitPointIdWorklet;
-        vtkm::worklet::DispatcherMapField<SaveSplitPointId, DeviceAdapter>
+        vtkm::worklet::DispatcherMapField<SaveSplitPointId >
         saveSplitPointIdWorkletDispatcher(saveSplitPointIdWorklet);
+        
         saveSplitPointIdWorkletDispatcher.Invoke(
             splitIdInSegmentByScanHandle, flagHandle, oldSplitIdHandle, splitIdHandle);
 
@@ -330,7 +331,7 @@ public:
     {
         vtkm::cont::ArrayHandle<T> resultHandle;
         ArrayAdd arrayAddWorklet;
-        vtkm::worklet::DispatcherMapField<ArrayAdd, DeviceAdapter> arrayAddDispatcher(arrayAddWorklet);
+        vtkm::worklet::DispatcherMapField<ArrayAdd > arrayAddDispatcher(arrayAddWorklet);
         arrayAddDispatcher.Invoke(array0Handle, array1Handle, resultHandle);
         return resultHandle;
     }
@@ -357,7 +358,7 @@ public:
         }
 
         vtkm::cont::ArrayHandle<T> flagHandle;
-        vtkm::worklet::DispatcherMapField<ComputeFlag, DeviceAdapter> ComputeFlagDispatcher;
+        vtkm::worklet::DispatcherMapField<ComputeFlag > ComputeFlagDispatcher;
         ComputeFlagDispatcher.Invoke(rankHandle, segCountAryHandle, flagHandle);
 
         return flagHandle;
@@ -391,7 +392,7 @@ public:
 
         vtkm::cont::ArrayHandle<T> I_Handle;
         SegmentedSplitTransform sstWorklet;
-        vtkm::worklet::DispatcherMapField<SegmentedSplitTransform, DeviceAdapter>
+        vtkm::worklet::DispatcherMapField<SegmentedSplitTransform >
         SegmentedSplitTransformDispatcher(sstWorklet);
         SegmentedSplitTransformDispatcher.Invoke(
             B_Handle, D_Handle, F_Handle, G_Handle, H_Handle, I_Handle);
@@ -492,7 +493,7 @@ public:
 
         SegmentedSplitTransform sstWorklet;
 
-        vtkm::worklet::DispatcherMapField<SegmentedSplitTransform, DeviceAdapter>
+        vtkm::worklet::DispatcherMapField<SegmentedSplitTransform >
         SegmentedSplitTransformDispatcher(sstWorklet);
 
         SegmentedSplitTransformDispatcher.Invoke(
@@ -586,7 +587,7 @@ public:
 
         for( int i = 0; i < N_DIMS; ++i )
         {
-            vtkm::worklet::DispatcherMapField<SeprateVecElementAryHandle, DeviceAdapter> sepVecispatcher(
+            vtkm::worklet::DispatcherMapField<SeprateVecElementAryHandle > sepVecispatcher(
                 sepVecWorklets[ i ] );
             sepVecispatcher.Invoke(coordi_Handle, coordi_Handles[ i ] );
 

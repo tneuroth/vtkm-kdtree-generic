@@ -73,7 +73,7 @@ public:
             const IdPortalT & splitIdPortal,
             const CoordiPortalT & coordiPortal ) const
         {
-            const vtkm::Int32 MAX_STACK_SIZE = 200;
+            const vtkm::Int32 MAX_STACK_SIZE = 500;
 
             vtkm::Int32 stacki[ MAX_STACK_SIZE ];
             CooriT      stackf[ MAX_STACK_SIZE ];
@@ -338,32 +338,31 @@ public:
             vtkm::cont::make_ArrayHandleConstant(intialValue, qc_Handle.GetNumberOfValues()),
             nnDis_Handle );
 
-        // set up stack size for cuda environment
-#ifdef VTKM_CUDA
-        using DeviceAdapterTraits = vtkm::cont::DeviceAdapterTraits<DeviceAdapter>;
-    std::size_t stackSizeBackup;
-    (void)stackSizeBackup;
-        if (DeviceAdapterTraits::GetId() == VTKM_DEVICE_ADAPTER_CUDA)
-        {
-            cudaDeviceGetLimit(&stackSizeBackup, cudaLimitStackSize);
-
-            cudaDeviceSetLimit(cudaLimitStackSize, 1024 * 32);
-        }
-#endif
+        //set up stack size for cuda environment
+        // #ifdef VTKM_CUDA
+        //     constexpr DeviceAdapter deviceId;
+        //     std::size_t stackSizeBackup;
+        //     (void)stackSizeBackup;
+        //     if (deviceId.GetValue() == VTKM_DEVICE_ADAPTER_CUDA)
+        //     {
+        //       cudaDeviceGetLimit(&stackSizeBackup, cudaLimitStackSize);
+        //       cudaDeviceSetLimit(cudaLimitStackSize, 1024 * 16);
+        //     }
+        // #endif
 
         NearestNeighborSearchWorklet nns3dWorklet;
-        vtkm::worklet::DispatcherMapField<NearestNeighborSearchWorklet, DeviceAdapter>
+        vtkm::worklet::DispatcherMapField<NearestNeighborSearchWorklet>
         nnsDispatcher(nns3dWorklet);
 
         nnsDispatcher.Invoke(
             qc_Handle, pointId_Handle, splitId_Handle, coordi_Handle, nnId_Handle, nnDis_Handle);
 
-#ifdef VTKM_CUDA
-        if (DeviceAdapterTraits::GetId() == VTKM_DEVICE_ADAPTER_CUDA)
-        {
-            cudaDeviceSetLimit(cudaLimitStackSize, stackSizeBackup);
-        }
-#endif
+        // #ifdef VTKM_CUDA
+        //     if (deviceId.GetValue() == VTKM_DEVICE_ADAPTER_CUDA)
+        //     {
+        //       cudaDeviceSetLimit(cudaLimitStackSize, stackSizeBackup);
+        //     }
+        // #endif
     }
 };
 }
