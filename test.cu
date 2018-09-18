@@ -7,7 +7,7 @@
 
 using namespace std;
 
-#define N_DIMS 2
+#define N_DIMS 2 
 
 namespace
 {
@@ -67,15 +67,14 @@ public:
 
 void TestKdTreeBuildNNS()
 {
-
-    vtkm::Int32 nTrainingPoints =   3000000;
-    vtkm::Int32 nTestingPoint   =  30000000;
+    vtkm::Int32 nTrainingPoints = 300000;
+    vtkm::Int32 nTestingPoint   = 300000;
 
     std::vector<vtkm::Vec< vtkm::Float32, N_DIMS > > coordi;
 
     ///// randomly generate training points/////
     std::default_random_engine dre;
-    std::uniform_real_distribution<vtkm::Float32> dr(0.0f, 100.0f);
+    std::uniform_real_distribution<vtkm::Float32> dr(0.0f, 10000.0f);
 
     for (vtkm::Int32 i = 0; i < nTrainingPoints; i++)
     {
@@ -90,13 +89,11 @@ void TestKdTreeBuildNNS()
     ///// preprare data to build  kd tree /////
     auto coordi_Handle = vtkm::cont::make_ArrayHandle(coordi);
 
-    // Run data
     vtkm::worklet::KdTree< N_DIMS > kdtree;
-
 
     auto t1 = std::chrono::high_resolution_clock::now();
 
-    kdtree.Build(coordi_Handle, VTKM_DEFAULT_DEVICE_ADAPTER_TAG());
+    kdtree.Build( coordi_Handle, VTKM_DEFAULT_DEVICE_ADAPTER_TAG() );
 
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "building took "
@@ -123,8 +120,6 @@ void TestKdTreeBuildNNS()
     vtkm::cont::ArrayHandle<vtkm::Id> nnId_Handle;
     auto nnDis_Handle = vtkm::cont::make_ArrayHandle( distances );
 
-    std::cout << "building complete\n";
-
     t1 = std::chrono::high_resolution_clock::now();
 
     checkDevice( VTKM_DEFAULT_DEVICE_ADAPTER_TAG() );
@@ -137,10 +132,11 @@ void TestKdTreeBuildNNS()
               << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
               << " milliseconds\n";
 
-    return;
-
     vtkm::cont::ArrayHandle<vtkm::Id> bfnnId_Handle;
-    vtkm::cont::ArrayHandle<vtkm::Float32> bfnnDis_Handle;
+    
+    std::vector< vtkm::Float32 > distancesBF( qcVec.size(), std::numeric_limits< float >::max() );
+    auto bfnnDis_Handle = vtkm::cont::make_ArrayHandle( distancesBF );
+
     NearestNeighborSearchBruteForceWorklet nnsbf3dWorklet;
 
     vtkm::worklet::DispatcherMapField< NearestNeighborSearchBruteForceWorklet > nnsbfDispatcher(
@@ -149,7 +145,7 @@ void TestKdTreeBuildNNS()
     t1 = std::chrono::high_resolution_clock::now();
     
     nnsbfDispatcher.Invoke(
-        qc_Handle, vtkm::cont::make_ArrayHandle(coordi), bfnnId_Handle, bfnnDis_Handle);
+        qc_Handle, vtkm::cont::make_ArrayHandle(coordi), bfnnId_Handle, bfnnDis_Handle );
     
     t2 = std::chrono::high_resolution_clock::now();
     std::cout << "brute force took "
@@ -163,9 +159,17 @@ void TestKdTreeBuildNNS()
         vtkm::Id workletIdx   = nnId_Handle.GetPortalControl().Get(i);
         vtkm::Id bfworkletIdx = bfnnId_Handle.GetPortalControl().Get(i);
 
-        if (workletIdx != bfworkletIdx)
+        auto p1 = coordi[ workletIdx   ];
+        auto p2 = coordi[ bfworkletIdx ];
+        auto p3 = qcVec[ i ];
+   
+        auto d1 = vtkm::Magnitude( p3 - p1 );
+        auto d2 = vtkm::Magnitude( p3 - p2 );
+
+        if ( workletIdx != bfworkletIdx && d1 != d2 )
         {
             std::cout << workletIdx << "!=" << bfworkletIdx << " at " << i << std::endl;
+            std::cout << vtkm::Magnitude( p3 - p1 ) << " vs " << vtkm::Magnitude( p3 - p2 ) << std::endl;
             passTest = false;
         }
     }

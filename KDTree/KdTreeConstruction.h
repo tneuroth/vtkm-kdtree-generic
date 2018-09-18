@@ -43,6 +43,7 @@ namespace worklet
 namespace spatialstructure
 {
 
+
 template <int N_DIMS>
 class KdTreeConstruction
 {
@@ -317,7 +318,7 @@ public:
         SaveSplitPointId saveSplitPointIdWorklet;
         vtkm::worklet::DispatcherMapField<SaveSplitPointId >
         saveSplitPointIdWorkletDispatcher(saveSplitPointIdWorklet);
-        
+
         saveSplitPointIdWorkletDispatcher.Invoke(
             splitIdInSegmentByScanHandle, flagHandle, oldSplitIdHandle, splitIdHandle);
 

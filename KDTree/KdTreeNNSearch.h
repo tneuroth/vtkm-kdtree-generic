@@ -75,28 +75,34 @@ public:
         {
             const vtkm::Int32 MAX_STACK_SIZE = 500;
 
-            vtkm::Int32 stacki[ MAX_STACK_SIZE ];
-            CooriT      stackf[ MAX_STACK_SIZE ];
-            vtkm::UInt8 stackc[ MAX_STACK_SIZE ];
+            vtkm::Int32 stackL[ MAX_STACK_SIZE ];
+            vtkm::Int32 stackR[ MAX_STACK_SIZE ];
+            vtkm::UInt8 stackD[ MAX_STACK_SIZE ];
+            CooriT      stackV[ MAX_STACK_SIZE ];
 
-            stacki[ 0 ] = 0;
-            stacki[ 1 ] = N;
+            stackL[ 0 ] = 0;
+            stackR[ 0 ] = N;
+            stackD[ 0 ] = 0;
+            stackV[ 0 ] = 0;
 
-            stackc[ 0 ] = 0;
-            stackc[ 1 ] = 0;
+            vtkm::Int32 top = 0;
+            dis = std::numeric_limits<CooriT>::max();
 
-            stackf[ 0 ] = 0;
-
-            vtkm::Int32 stackSize = 1;
-
-            while( stackSize > 0 )
+            while( top >= 0 )
             {  
-                vtkm::Int32 left  = stacki[ ( stackSize - 1 )*2     ];
-                vtkm::Int32 right = stacki[ ( stackSize - 1 )*2 + 1 ];
-                vtkm::UInt8 dim   = stackc[ ( stackSize - 1 ) ];                
-                CooriT cval       = stackf[ ( stackSize - 1 ) ];
+                // ran out of stack space
+                if( top >= MAX_STACK_SIZE )
+                {
+                    nnpIdx = -1;
+                    break;
+                }
 
-                --stackSize;
+                const vtkm::Int32 left  = stackL[ top ];
+                const vtkm::Int32 right = stackR[ top ];
+                const vtkm::UInt8 dim   = stackD[ top ];                
+                const CooriT cval       = stackV[ top ];
+
+                --top;
 
                 if( cval > dis )
                 {
@@ -113,69 +119,60 @@ public:
                     {
                         dis = _dis;
                         nnpIdx = leafNodeIdx;
-                    }                   
+                    }
                 }
                 else
                 {
-                    // ran out of stack space
-                    if( stackSize >= MAX_STACK_SIZE - 1 )
-                    {
-                        nnpIdx = -1;
-                        break;
-                    }
-
                     //normal Node
-                    // const vtkm::Int32 DIM_INDEX = dim % N_DIMS;
-                    vtkm::Int32 splitNodeLoc = static_cast< vtkm::Int32 >( vtkm::Ceil( double( ( left + right ) ) / 2.0 ) );
-                    CooriT splitAxis = coordiPortal.Get( splitIdPortal.Get( splitNodeLoc ) )[ dim ];
-                    CooriT queryCoordi = qc[ dim ];
-                   
-                    const vtkm::UInt8 nextDim = ( dim + 1 ) % N_DIMS;
 
-                    const vtkm::Float32 cv1 = queryCoordi - splitAxis;
+                    vtkm::Int32 splitNodeLoc = vtkm::Ceil( ( left + right ) / 2.0 );
+                    CooriT splitAxis = coordiPortal.Get( splitIdPortal.Get( splitNodeLoc ) )[ dim ];
+
+                    const vtkm::UInt8 nextDim = ( dim + 1 ) % N_DIMS;
+                    const vtkm::Float32 cv1 = qc[ dim ] - splitAxis;
                     const vtkm::Float32 cv2 = -cv1;
 
                     if ( cv1 <= 0 )
                     { 
                         if ( cv2 < dis )
                         {
-                            ++stackSize;                           
-                            stacki[ ( stackSize - 1 )*2     ] = splitNodeLoc;
-                            stacki[ ( stackSize - 1 )*2 + 1 ] = right;
-                            stackc[ ( stackSize - 1 ) ] = nextDim; 
-                            stackf[ ( stackSize - 1 ) ] = cv2;          
+                            ++top;                           
+                            stackL[ top ] = splitNodeLoc;
+                            stackR[ top ] = right;
+                            stackD[ top ] = nextDim; 
+                            stackV[ top ] = cv2;          
                         }
 
                         // left tree first
                         if ( cv1 < dis )
                         {
-                            ++stackSize;
-                            stacki[ ( stackSize - 1 )*2     ] = left;
-                            stacki[ ( stackSize - 1 )*2 + 1 ] = splitNodeLoc;
-                            stackc[ ( stackSize - 1 ) ] = nextDim;                               
-                            stackf[ ( stackSize - 1 ) ] = cv1;                                                                               
-                        }   
+                            ++top;
+                            stackL[ top ] = left;
+                            stackR[ top ] = splitNodeLoc;
+                            stackD[ top ] = nextDim;                               
+                            stackV[ top ] = cv1;                                                                               
+                        }
                     }
                     else
                     {
                         if ( cv1 < dis )
                         {
-                            ++stackSize;
-                            stacki[ ( stackSize - 1 )*2     ] = left;
-                            stacki[ ( stackSize - 1 )*2 + 1 ] = splitNodeLoc;
-                            stackc[ ( stackSize - 1 ) ] = nextDim;   
-                            stackf[ ( stackSize - 1 ) ] = cv1;                                  
+                            ++top;
+                            stackL[ top ] = left;
+                            stackR[ top ] = splitNodeLoc;
+                            stackD[ top ] = nextDim;   
+                            stackV[ top ] = cv1;                                  
                         }
 
                         // right tree first
                         if ( cv2 < dis )
                         {
-                            ++stackSize;                           
-                            stacki[ ( stackSize - 1 )*2     ] = splitNodeLoc;
-                            stacki[ ( stackSize - 1 )*2 + 1 ] = right;
-                            stackc[ ( stackSize - 1 ) ] = nextDim; 
-                            stackf[ ( stackSize - 1 ) ] = cv2;                                       
-                        }       
+                            ++top;                           
+                            stackL[ top ] = splitNodeLoc;
+                            stackR[ top ] = right;
+                            stackD[ top ] = nextDim; 
+                            stackV[ top ] = cv2;                                       
+                        }
                     }
                 }
             }
@@ -288,7 +285,7 @@ public:
                                   const IdPortalType& treeSplitIdPortal,
                                   const CoordiPortalType& treeCoordiPortal,
                                   IdType& nnId,
-                                  CoordiType& nnDis) const
+                                  CoordiType& nnDis ) const
         {
             // NearestNeighborSearch(
             //     qc,
@@ -355,7 +352,7 @@ public:
         nnsDispatcher(nns3dWorklet);
 
         nnsDispatcher.Invoke(
-            qc_Handle, pointId_Handle, splitId_Handle, coordi_Handle, nnId_Handle, nnDis_Handle);
+            qc_Handle, pointId_Handle, splitId_Handle, coordi_Handle, nnId_Handle, nnDis_Handle );
 
         // #ifdef VTKM_CUDA
         //     if (deviceId.GetValue() == VTKM_DEVICE_ADAPTER_CUDA)
