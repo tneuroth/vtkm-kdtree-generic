@@ -63,120 +63,120 @@ public:
         VTKM_CONT
         NearestNeighborSearchWorklet() {}
 
-        template <typename CooriVecT, typename CooriT, typename IdPortalT, typename CoordiPortalT>
-        VTKM_EXEC_CONT void NearestNeighborSearchIterative(
-            const CooriVecT & qc,
-            CooriT & dis,
-            vtkm::Id & nnpIdx,
-            vtkm::Int32 N,
-            const IdPortalT & treePortal,
-            const IdPortalT & splitIdPortal,
-            const CoordiPortalT & coordiPortal ) const
-        {
-            const vtkm::Int32 MAX_STACK_SIZE = 500;
+        // template <typename CooriVecT, typename CooriT, typename IdPortalT, typename CoordiPortalT>
+        // VTKM_EXEC_CONT void NearestNeighborSearchIterative(
+        //     const CooriVecT & qc,
+        //     CooriT & dis,
+        //     vtkm::Id & nnpIdx,
+        //     vtkm::Int32 N,
+        //     const IdPortalT & treePortal,
+        //     const IdPortalT & splitIdPortal,
+        //     const CoordiPortalT & coordiPortal ) const
+        // {
+        //     const vtkm::Int32 MAX_STACK_SIZE = 500;
 
-            vtkm::Int32 stackL[ MAX_STACK_SIZE ];
-            vtkm::Int32 stackR[ MAX_STACK_SIZE ];
-            vtkm::UInt8 stackD[ MAX_STACK_SIZE ];
-            CooriT      stackV[ MAX_STACK_SIZE ];
+        //     vtkm::Int32 stackL[ MAX_STACK_SIZE ];
+        //     vtkm::Int32 stackR[ MAX_STACK_SIZE ];
+        //     vtkm::UInt8 stackD[ MAX_STACK_SIZE ];
+        //     CooriT      stackV[ MAX_STACK_SIZE ];
 
-            stackL[ 0 ] = 0;
-            stackR[ 0 ] = N;
-            stackD[ 0 ] = 0;
-            stackV[ 0 ] = 0;
+        //     stackL[ 0 ] = 0;
+        //     stackR[ 0 ] = N;
+        //     stackD[ 0 ] = 0;
+        //     stackV[ 0 ] = 0;
 
-            vtkm::Int32 top = 0;
-            dis = std::numeric_limits<CooriT>::max();
+        //     vtkm::Int32 top = 0;
+        //     dis = std::numeric_limits<CooriT>::max();
 
-            while( top >= 0 )
-            {  
-                // ran out of stack space
-                if( top >= MAX_STACK_SIZE )
-                {
-                    nnpIdx = -1;
-                    break;
-                }
+        //     while( top >= 0 )
+        //     {  
+        //         // ran out of stack space
+        //         if( top >= MAX_STACK_SIZE )
+        //         {
+        //             nnpIdx = -1;
+        //             break;
+        //         }
 
-                const vtkm::Int32 left  = stackL[ top ];
-                const vtkm::Int32 right = stackR[ top ];
-                const vtkm::UInt8 dim   = stackD[ top ];                
-                const CooriT cval       = stackV[ top ];
+        //         const vtkm::Int32 left  = stackL[ top ];
+        //         const vtkm::Int32 right = stackR[ top ];
+        //         const vtkm::UInt8 dim   = stackD[ top ];                
+        //         const CooriT cval       = stackV[ top ];
 
-                --top;
+        //         --top;
 
-                if( cval > dis )
-                {
-                    continue;
-                }
+        //         if( cval > dis )
+        //         {
+        //             continue;
+        //         }
 
-                if ( right - left == 1 )
-                {
-                    ///// leaf node
-                    const vtkm::Id & leafNodeIdx = treePortal.Get( left );
-                    const CooriT _dis = vtkm::Magnitude( coordiPortal.Get( leafNodeIdx ) - qc );
+        //         if ( right - left == 1 )
+        //         {
+        //             ///// leaf node
+        //             const vtkm::Id & leafNodeIdx = treePortal.Get( left );
+        //             const CooriT _dis = vtkm::Magnitude( coordiPortal.Get( leafNodeIdx ) - qc );
                     
-                    if ( _dis < dis )
-                    {
-                        dis = _dis;
-                        nnpIdx = leafNodeIdx;
-                    }
-                }
-                else
-                {
-                    //normal Node
+        //             if ( _dis < dis )
+        //             {
+        //                 dis = _dis;
+        //                 nnpIdx = leafNodeIdx;
+        //             }
+        //         }
+        //         else
+        //         {
+        //             //normal Node
 
-                    vtkm::Int32 splitNodeLoc = vtkm::Ceil( ( left + right ) / 2.0 );
-                    CooriT splitAxis = coordiPortal.Get( splitIdPortal.Get( splitNodeLoc ) )[ dim ];
+        //             vtkm::Int32 splitNodeLoc = vtkm::Ceil( ( left + right ) / 2.0 );
+        //             CooriT splitAxis = coordiPortal.Get( splitIdPortal.Get( splitNodeLoc ) )[ dim ];
 
-                    const vtkm::UInt8 nextDim = ( dim + 1 ) % N_DIMS;
-                    const vtkm::Float32 cv1 = qc[ dim ] - splitAxis;
-                    const vtkm::Float32 cv2 = -cv1;
+        //             const vtkm::UInt8 nextDim = ( dim + 1 ) % N_DIMS;
+        //             const vtkm::Float32 cv1 = qc[ dim ] - splitAxis;
+        //             const vtkm::Float32 cv2 = -cv1;
 
-                    if ( cv1 <= 0 )
-                    { 
-                        if ( cv2 < dis )
-                        {
-                            ++top;                           
-                            stackL[ top ] = splitNodeLoc;
-                            stackR[ top ] = right;
-                            stackD[ top ] = nextDim; 
-                            stackV[ top ] = cv2;          
-                        }
+        //             if ( cv1 <= 0 )
+        //             { 
+        //                 if ( cv2 < dis )
+        //                 {
+        //                     ++top;                           
+        //                     stackL[ top ] = splitNodeLoc;
+        //                     stackR[ top ] = right;
+        //                     stackD[ top ] = nextDim; 
+        //                     stackV[ top ] = cv2;          
+        //                 }
 
-                        // left tree first
-                        if ( cv1 < dis )
-                        {
-                            ++top;
-                            stackL[ top ] = left;
-                            stackR[ top ] = splitNodeLoc;
-                            stackD[ top ] = nextDim;                               
-                            stackV[ top ] = cv1;                                                                               
-                        }
-                    }
-                    else
-                    {
-                        if ( cv1 < dis )
-                        {
-                            ++top;
-                            stackL[ top ] = left;
-                            stackR[ top ] = splitNodeLoc;
-                            stackD[ top ] = nextDim;   
-                            stackV[ top ] = cv1;                                  
-                        }
+        //                 // left tree first
+        //                 if ( cv1 < dis )
+        //                 {
+        //                     ++top;
+        //                     stackL[ top ] = left;
+        //                     stackR[ top ] = splitNodeLoc;
+        //                     stackD[ top ] = nextDim;                               
+        //                     stackV[ top ] = cv1;                                                                               
+        //                 }
+        //             }
+        //             else
+        //             {
+        //                 if ( cv1 < dis )
+        //                 {
+        //                     ++top;
+        //                     stackL[ top ] = left;
+        //                     stackR[ top ] = splitNodeLoc;
+        //                     stackD[ top ] = nextDim;   
+        //                     stackV[ top ] = cv1;                                  
+        //                 }
 
-                        // right tree first
-                        if ( cv2 < dis )
-                        {
-                            ++top;                           
-                            stackL[ top ] = splitNodeLoc;
-                            stackR[ top ] = right;
-                            stackD[ top ] = nextDim; 
-                            stackV[ top ] = cv2;                                       
-                        }
-                    }
-                }
-            }
-        }
+        //                 // right tree first
+        //                 if ( cv2 < dis )
+        //                 {
+        //                     ++top;                           
+        //                     stackL[ top ] = splitNodeLoc;
+        //                     stackR[ top ] = right;
+        //                     stackD[ top ] = nextDim; 
+        //                     stackV[ top ] = cv2;                                       
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
 
         template <typename CooriVecT, typename CooriT, typename IdPortalT, typename CoordiPortalT>
         VTKM_EXEC_CONT void NearestNeighborSearch(
@@ -287,25 +287,25 @@ public:
                                   IdType& nnId,
                                   CoordiType& nnDis ) const
         {
-            // NearestNeighborSearch(
-            //     qc,
-            //     nnDis,
-            //     nnId,
-            //     0,
-            //     0,
-            //     treeIdPortal.GetNumberOfValues(),
-            //     treeIdPortal,
-            //     treeSplitIdPortal,
-            //     treeCoordiPortal);
-
-            NearestNeighborSearchIterative(
+            NearestNeighborSearch(
                 qc,
                 nnDis,
                 nnId,
+                0,
+                0,
                 treeIdPortal.GetNumberOfValues(),
                 treeIdPortal,
                 treeSplitIdPortal,
-                treeCoordiPortal);   
+                treeCoordiPortal);
+
+            // NearestNeighborSearchIterative(
+            //     qc,
+            //     nnDis,
+            //     nnId,
+            //     treeIdPortal.GetNumberOfValues(),
+            //     treeIdPortal,
+            //     treeSplitIdPortal,
+            //     treeCoordiPortal);   
         }
     };
 
