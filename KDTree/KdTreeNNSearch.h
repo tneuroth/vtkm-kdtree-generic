@@ -52,12 +52,12 @@ public:
 
     public:
     
-        using ControlSignature = void(FieldIn<> qcIn,
-                                      WholeArrayIn<> treeIdIn,
-                                      WholeArrayIn<> treeSplitIdIn,
-                                      WholeArrayIn<> treeCoordiIn,
-                                      FieldOut<> nnIdOut,
-                                      FieldInOut<> nnDisOut);
+        using ControlSignature = void(FieldIn qcIn,
+                                      WholeArrayIn treeIdIn,
+                                      WholeArrayIn treeSplitIdIn,
+                                      WholeArrayIn treeCoordiIn,
+                                      FieldOut nnIdOut,
+                                      FieldInOut nnDisOut);
         using ExecutionSignature = void(_1, _2, _3, _4, _5, _6);
 
         VTKM_CONT
@@ -331,7 +331,7 @@ public:
     {
         //fill the nnDis_Handle handle array with max values before running
         auto intialValue = std::numeric_limits<CoordType>::max();
-        vtkm::cont::DeviceAdapterAlgorithm<DeviceAdapter>::Copy(
+        vtkm::cont::Algorithm::Copy(
             vtkm::cont::make_ArrayHandleConstant(intialValue, qc_Handle.GetNumberOfValues()),
             nnDis_Handle );
 

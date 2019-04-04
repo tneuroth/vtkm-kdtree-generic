@@ -12,14 +12,18 @@ using namespace std;
 namespace
 {
 
-using Algorithm = vtkm::cont::DeviceAdapterAlgorithm<VTKM_DEFAULT_DEVICE_ADAPTER_TAG>;
+using Algorithm = vtkm::cont::Algorithm;
 
-template< typename DeviceAdapter >
-inline void checkDevice(DeviceAdapter)
-{
-    using DeviceAdapterTraits = vtkm::cont::DeviceAdapterTraits<DeviceAdapter>;
-    std::cout << "vtkm is using " << DeviceAdapterTraits::GetName() << std::endl;
-}
+// template< typename DeviceAdapter >
+// inline void checkDevice( DeviceAdapter)
+// {
+//     // using DeviceAdapterTraits = vtkm::cont::DeviceAdapterTraits<DeviceAdapter>;
+//     // std::cout << "vtkm is using " << DeviceAdapterTraits::GetName() << std::endl;
+// }
+
+
+// template <typename CoordiVecT, typename CoordiPortalT, typename CoordiT>
+// VTKM_EXEC_CONT vtkm::Id NNSVerify3D(CoordiVecT qc, CoordiPortalT coordiPortal, CoordiT& dis)
 
 ////brute force method /////
 template <typename CoordiVecT, typename CoordiPortalT, typename CoordiT >
@@ -45,10 +49,10 @@ VTKM_EXEC_CONT vtkm::Id NNSVerify(CoordiVecT qc, CoordiPortalT coordiPortal, Coo
 class NearestNeighborSearchBruteForceWorklet : public vtkm::worklet::WorkletMapField
 {
 public:
-    using ControlSignature = void(FieldIn<> qcIn,
-                                  WholeArrayIn<> treeCoordiIn,
-                                  FieldOut<> nnIdOut,
-                                  FieldOut<> nnDisOut);
+    using ControlSignature = void(FieldIn qcIn,
+                                  WholeArrayIn treeCoordiIn,
+                                  FieldOut nnIdOut,
+                                  FieldOut nnDisOut);
     using ExecutionSignature = void(_1, _2, _3, _4);
 
     VTKM_CONT
@@ -65,7 +69,7 @@ public:
     }
 };
 
-void TestKdTreeBuildNNS()
+void TestKdTreeBuildNNS( vtkm::cont::DeviceAdapterId deviceId )
 {
     vtkm::Int32 nTrainingPoints = 300000;
     vtkm::Int32 nTestingPoint   = 300000;
@@ -93,7 +97,7 @@ void TestKdTreeBuildNNS()
 
     auto t1 = std::chrono::high_resolution_clock::now();
 
-    kdtree.Build( coordi_Handle, VTKM_DEFAULT_DEVICE_ADAPTER_TAG() );
+    kdtree.Build( coordi_Handle, deviceId );
 
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "building took "
@@ -122,10 +126,10 @@ void TestKdTreeBuildNNS()
 
     t1 = std::chrono::high_resolution_clock::now();
 
-    checkDevice( VTKM_DEFAULT_DEVICE_ADAPTER_TAG() );
+    // checkDevice( deviceId );
 
     kdtree.Run(
-        coordi_Handle, qc_Handle, nnId_Handle, nnDis_Handle, VTKM_DEFAULT_DEVICE_ADAPTER_TAG());
+        coordi_Handle, qc_Handle, nnId_Handle, nnDis_Handle, deviceId );
 
     t2 = std::chrono::high_resolution_clock::now();
     std::cout << "searching took "
@@ -186,5 +190,5 @@ void TestKdTreeBuildNNS()
 
 int main(int argc, char* argv[])
 {
-    vtkm::cont::testing::Testing::Run( TestKdTreeBuildNNS );
+    vtkm::cont::testing::Testing::RunOnDevice( TestKdTreeBuildNNS, argc, argv );
 }

@@ -52,7 +52,7 @@ public:
     class ComputeFlag : public vtkm::worklet::WorkletMapField
     {
     public:
-        using ControlSignature = void(FieldIn<> rank, FieldIn<> pointCountInSeg, FieldOut<> flag);
+        using ControlSignature = void(FieldIn rank, FieldIn pointCountInSeg, FieldOut flag);
         using ExecutionSignature = void(_1, _2, _3);
 
         VTKM_CONT
@@ -72,7 +72,7 @@ public:
     {
         //only for 0/1 array
     public:
-        using ControlSignature = void(FieldIn<> in, FieldOut<> out);
+        using ControlSignature = void(FieldIn in, FieldOut out);
         using ExecutionSignature = void(_1, _2);
 
         VTKM_CONT
@@ -96,7 +96,7 @@ public:
     {
     public:
         using ControlSignature =
-            void(FieldIn<> B, FieldIn<> D, FieldIn<> F, FieldIn<> G, FieldIn<> H, FieldOut<> I);
+            void(FieldIn B, FieldIn D, FieldIn F, FieldIn G, FieldIn H, FieldOut I);
         using ExecutionSignature = void(_1, _2, _3, _4, _5, _6);
 
         VTKM_CONT
@@ -120,7 +120,7 @@ public:
     class ScatterArray : public vtkm::worklet::WorkletMapField
     {
     public:
-        using ControlSignature = void(FieldIn<> in, FieldIn<> index, WholeArrayOut<> out);
+        using ControlSignature = void(FieldIn in, FieldIn index, WholeArrayOut out);
         using ExecutionSignature = void(_1, _2, _3);
 
         VTKM_CONT
@@ -138,7 +138,7 @@ public:
     class NewSegmentId : public vtkm::worklet::WorkletMapField
     {
     public:
-        using ControlSignature = void(FieldIn<> inSegmentId, FieldIn<> flag, FieldOut<> outSegmentId);
+        using ControlSignature = void(FieldIn inSegmentId, FieldIn flag, FieldOut outSegmentId);
         using ExecutionSignature = void(_1, _2, _3);
 
         VTKM_CONT
@@ -157,10 +157,10 @@ public:
     class SaveSplitPointId : public vtkm::worklet::WorkletMapField
     {
     public:
-        using ControlSignature = void(FieldIn<> pointId,
-                                      FieldIn<> flag,
-                                      FieldIn<> oldSplitPointId,
-                                      FieldOut<> newSplitPointId);
+        using ControlSignature = void(FieldIn pointId,
+                                      FieldIn flag,
+                                      FieldIn oldSplitPointId,
+                                      FieldOut newSplitPointId);
         using ExecutionSignature = void(_1, _2, _3, _4);
 
         VTKM_CONT
@@ -182,7 +182,7 @@ public:
     class FindSplitPointId : public vtkm::worklet::WorkletMapField
     {
     public:
-        using ControlSignature = void(FieldIn<> pointId, FieldIn<> rank, FieldOut<> splitIdInsegment);
+        using ControlSignature = void(FieldIn pointId, FieldIn rank, FieldOut splitIdInsegment);
         using ExecutionSignature = void(_1, _2, _3);
 
         VTKM_CONT
@@ -201,7 +201,7 @@ public:
     class ArrayAdd : public vtkm::worklet::WorkletMapField
     {
     public:
-        using ControlSignature = void(FieldIn<> inArray0, FieldIn<> inArray1, FieldOut<> outArray);
+        using ControlSignature = void(FieldIn inArray0, FieldIn inArray1, FieldOut outArray);
         using ExecutionSignature = void(_1, _2, _3);
 
         VTKM_CONT
@@ -217,8 +217,8 @@ public:
     class SeprateVecElementAryHandle : public vtkm::worklet::WorkletMapField
     {
     public:
-        using ControlSignature = void(FieldIn<> inVec,
-                                      FieldOut<> out );
+        using ControlSignature = void(FieldIn inVec,
+                                      FieldOut out );
         using ExecutionSignature = void(_1, _2 );
 
         int m_dim;
@@ -245,7 +245,7 @@ public:
             BinaryFunctor binary_functor,
             DeviceAdapter vtkmNotUsed(device))
     {
-        using Algorithm = typename vtkm::cont::DeviceAdapterAlgorithm<DeviceAdapter>;
+        using Algorithm = vtkm::cont::Algorithm;
 
         vtkm::cont::ArrayHandle<T> resultHandle;
 
@@ -345,7 +345,7 @@ public:
             vtkm::cont::ArrayHandle<T>& segIdHandle,
             DeviceAdapter device)
     {
-        using Algorithm = typename vtkm::cont::DeviceAdapterAlgorithm<DeviceAdapter>;
+        using Algorithm = vtkm::cont::Algorithm;
 
         vtkm::cont::ArrayHandle<T> segCountAryHandle;
         {
@@ -371,7 +371,7 @@ public:
             vtkm::cont::ArrayHandle<T>& C_Handle,
             DeviceAdapter device)
     {
-        using Algorithm = typename vtkm::cont::DeviceAdapterAlgorithm<DeviceAdapter>;
+        using Algorithm = vtkm::cont::Algorithm;
 
         vtkm::cont::ArrayHandle<T> D_Handle;
         T initValue = 0;
@@ -408,7 +408,7 @@ public:
                                 vtkm::cont::ArrayHandle<T>& D_Handle,
                                 DeviceAdapter device)
     {
-        using Algorithm = typename vtkm::cont::DeviceAdapterAlgorithm<DeviceAdapter>;
+        using Algorithm = vtkm::cont::Algorithm;
 
         vtkm::Id nPoints = A_Handle.GetNumberOfValues();
 
@@ -470,7 +470,7 @@ public:
                                  std::array< vtkm::cont::ArrayHandle<T>, N_DIMS > & handles,
                                  DeviceAdapter device)
     {
-        using Algorithm = typename vtkm::cont::DeviceAdapterAlgorithm<DeviceAdapter>;
+        using Algorithm = vtkm::cont::Algorithm;
 
         vtkm::cont::ArrayHandle<T> D_Handle;
         T initValue = 0;
@@ -524,7 +524,7 @@ public:
                          vtkm::Int32 level,
                          DeviceAdapter device)
     {
-        using Algorithm = typename vtkm::cont::DeviceAdapterAlgorithm<DeviceAdapter>;
+        using Algorithm = vtkm::cont::Algorithm;
 
         vtkm::cont::ArrayHandle<T> flag_Handle = ComputeFlagProcedure( rank_Handles[ level % N_DIMS ], segId_Handle, device);
 
@@ -563,13 +563,13 @@ public:
              vtkm::cont::ArrayHandle<vtkm::Id>& splitId_Handle,
              DeviceAdapter device)
     {
-        using Algorithm = typename vtkm::cont::DeviceAdapterAlgorithm<DeviceAdapter>;
+        using Algorithm = vtkm::cont::Algorithm;
 
         vtkm::Id nTrainingPoints = coordi_Handle.GetNumberOfValues();
         vtkm::cont::ArrayHandleCounting<vtkm::Id> counting_Handle(0, 1, nTrainingPoints);
         vtkm::cont::ArrayHandle<vtkm::Id> order_Handles[ N_DIMS ];
 
-        Algorithm::Copy(counting_Handle, pointId_Handle);
+        Algorithm::Copy( counting_Handle, pointId_Handle );
 
         for( int i = 0; i < N_DIMS; ++i )
         {
