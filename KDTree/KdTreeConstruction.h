@@ -251,10 +251,14 @@ public:
 
         auto reversedResultHandle = vtkm::cont::make_ArrayHandleReverse(resultHandle);
 
+        vtkm::cont::Algorithm::Synchronize();
+
         Algorithm::ScanInclusiveByKey(vtkm::cont::make_ArrayHandleReverse(keyHandle),
                                       vtkm::cont::make_ArrayHandleReverse(dataHandle),
                                       reversedResultHandle,
                                       binary_functor);
+
+        vtkm::cont::Algorithm::Synchronize();
 
         return resultHandle;
     }
@@ -268,6 +272,8 @@ public:
         vtkm::worklet::DispatcherMapField<InverseArray > InverseArrayDispatcher(
             invWorklet);
         InverseArrayDispatcher.Invoke(inputHandle, InverseHandle);
+        vtkm::cont::Algorithm::Synchronize();
+
         return InverseHandle;
     }
 
@@ -282,6 +288,7 @@ public:
         vtkm::worklet::DispatcherMapField<ScatterArray > ScatterArrayDispatcher(
             scatterWorklet);
         ScatterArrayDispatcher.Invoke(inputHandle, indexHandle, outputHandle);
+        vtkm::cont::Algorithm::Synchronize();        
         return outputHandle;
     }
 
@@ -295,6 +302,8 @@ public:
         vtkm::worklet::DispatcherMapField<NewSegmentId > newSegIdDispatcher(
             newsegidWorklet);
         newSegIdDispatcher.Invoke(oldSegIdHandle, flagHandle, newSegIdHandle);
+        vtkm::cont::Algorithm::Synchronize();
+
         return newSegIdHandle;
     }
 
@@ -310,6 +319,7 @@ public:
         vtkm::worklet::DispatcherMapField<FindSplitPointId >
         findSplitPointIdWorkletDispatcher(findSplitPointIdWorklet);
         findSplitPointIdWorkletDispatcher.Invoke(pointIdHandle, rankHandle, splitIdInSegmentHandle);
+        vtkm::cont::Algorithm::Synchronize();
 
         vtkm::cont::ArrayHandle<T> splitIdInSegmentByScanHandle =
             ReverseScanInclusiveByKey(flagHandle, splitIdInSegmentHandle, vtkm::Maximum(), device);
@@ -321,6 +331,8 @@ public:
 
         saveSplitPointIdWorkletDispatcher.Invoke(
             splitIdInSegmentByScanHandle, flagHandle, oldSplitIdHandle, splitIdHandle);
+
+        vtkm::cont::Algorithm::Synchronize();
 
         return splitIdHandle;
     }
@@ -334,6 +346,8 @@ public:
         ArrayAdd arrayAddWorklet;
         vtkm::worklet::DispatcherMapField<ArrayAdd > arrayAddDispatcher(arrayAddWorklet);
         arrayAddDispatcher.Invoke(array0Handle, array1Handle, resultHandle);
+        vtkm::cont::Algorithm::Synchronize(); 
+        
         return resultHandle;
     }
 
@@ -353,14 +367,19 @@ public:
             vtkm::cont::ArrayHandleConstant<T> constHandle(1, rankHandle.GetNumberOfValues());
             Algorithm::ScanInclusiveByKey(
                 segIdHandle, constHandle, tmpAryHandle, vtkm::Add()); //compute ttl segs in segment
+            
+            vtkm::cont::Algorithm::Synchronize();
 
             segCountAryHandle =
                 ReverseScanInclusiveByKey(segIdHandle, tmpAryHandle, vtkm::Maximum(), device);
+        
+            vtkm::cont::Algorithm::Synchronize();
         }
 
         vtkm::cont::ArrayHandle<T> flagHandle;
         vtkm::worklet::DispatcherMapField<ComputeFlag > ComputeFlagDispatcher;
         ComputeFlagDispatcher.Invoke(rankHandle, segCountAryHandle, flagHandle);
+        vtkm::cont::Algorithm::Synchronize();
 
         return flagHandle;
     }
@@ -500,6 +519,8 @@ public:
         SegmentedSplitTransformDispatcher.Invoke(
             flag_Handle, D_Handle, F_Handle, G_Handle, H_Handle, I_Handle);
 
+        vtkm::cont::Algorithm::Synchronize();
+
         pointId_Handle = ScatterArrayWrapper(pointId_Handle, I_Handle, device);
 
         flag_Handle = ScatterArrayWrapper(flag_Handle, I_Handle, device);
@@ -533,6 +554,8 @@ public:
 
         vtkm::cont::ArrayHandle<T> segIdOld_Handle;
         Algorithm::Copy(segId_Handle, segIdOld_Handle);
+        vtkm::cont::Algorithm::Synchronize();
+
         segId_Handle = NewKeyWrapper(segIdOld_Handle, flag_Handle, device);
 
         for( int i = 0; i < N_DIMS; ++i )
@@ -591,8 +614,10 @@ public:
             vtkm::worklet::DispatcherMapField<SeprateVecElementAryHandle > sepVecispatcher(
                 sepVecWorklets[ i ] );
             sepVecispatcher.Invoke(coordi_Handle, coordi_Handles[ i ] );
+            vtkm::cont::Algorithm::Synchronize();
 
             Algorithm::SortByKey( coordi_Handles[ i ], order_Handles[ i ] );
+            vtkm::cont::Algorithm::Synchronize();
 
             rank_Handles[ i ] = ScatterArrayWrapper( pointId_Handle, order_Handles[ i ], device);
         }

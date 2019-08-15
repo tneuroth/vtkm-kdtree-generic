@@ -8,7 +8,7 @@ enable_cuda_support()
 set(VTKm_DIR "../vtkm-build/lib/cmake/vtkm-1.3")
 set(CMAKE_CXX_FLAGS "-O3 -std=c++11" )
 
-set(CUDA_NVCC_FLAGS "-std=c++11 -O4")
+set(CUDA_NVCC_FLAGS "-std=c++11 -O4 -lcuda -lcudart")
 
 find_package(VTKm REQUIRED)
 find_package(CUDA REQUIRED)

@@ -98,6 +98,8 @@ void TestKdTreeBuildNNS( vtkm::cont::DeviceAdapterId deviceId )
     auto t1 = std::chrono::high_resolution_clock::now();
 
     kdtree.Build( coordi_Handle, deviceId );
+    
+    Algorithm::Synchronize();
 
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "building took "
@@ -131,6 +133,8 @@ void TestKdTreeBuildNNS( vtkm::cont::DeviceAdapterId deviceId )
     kdtree.Run(
         coordi_Handle, qc_Handle, nnId_Handle, nnDis_Handle, deviceId );
 
+    Algorithm::Synchronize();
+
     t2 = std::chrono::high_resolution_clock::now();
     std::cout << "searching took "
               << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
@@ -150,6 +154,8 @@ void TestKdTreeBuildNNS( vtkm::cont::DeviceAdapterId deviceId )
     
     nnsbfDispatcher.Invoke(
         qc_Handle, vtkm::cont::make_ArrayHandle(coordi), bfnnId_Handle, bfnnDis_Handle );
+
+    Algorithm::Synchronize();
     
     t2 = std::chrono::high_resolution_clock::now();
     std::cout << "brute force took "
